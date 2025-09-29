@@ -13,9 +13,7 @@ const PORT = ENV.PORT;
 /**
  * Health
  * --------------------------------
- * GET    /health                   → simple health check
  */
-
 app.get("/api/health", (req, res) => {
     res.status(200).json({ success: true });
 });
@@ -25,6 +23,17 @@ app.get("/api/health", (req, res) => {
  * --------------------------------
  * POST   /schedules                         → create new schedule
  */
+app.post("/api/schedules", async (req, res) => {
+    try {
+        const { id, ownerId, title, periodStart, periodEnd, isActive, version, deletedAt, createdAt, updatedAt } = req.body;
+
+        if (!title || !periodStart || !periodEnd || !isActive) {
+            return res.status(400).json({ error: "Missing required fields" });
+        }
+    } catch {
+
+    }
+});
 
 /**
  * GET    /schedules                         → get list of schedules (optionally ?since, ?limit, ?cursor)
@@ -56,14 +65,6 @@ app.get("/api/health", (req, res) => {
 
 /**
  * POST   /schedules/:id/ops                 → apply diff ops (add/update/delete multiple blocks)
- */
-
-/**
- * Preferences
- * --------------------------------
- * POST   /preferences              → set up preferences (onboarding)
- * PUT    /preferences/:id          → update preferences
- * GET    /preferences/me           → get current user preferences
  */
 
 /**
