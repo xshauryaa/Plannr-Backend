@@ -14,7 +14,7 @@ export const users = pgTable("users", {
 
 export const schedules = pgTable("schedules", {
   id: uuid("id").defaultRandom().primaryKey(),
-  ownerId: uuid("owner_id").notNull(),
+  ownerId: uuid("owner_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   title: text("title").notNull(),
   // Support both period-based and day1-based scheduling
   periodStart: date("period_start"),

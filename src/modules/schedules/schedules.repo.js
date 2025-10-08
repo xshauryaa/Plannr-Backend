@@ -1,5 +1,5 @@
 import { db } from '../../config/db.js';
-import { schedules, blocks } from '../../db/schema.js';
+import { schedules, blocks, users } from '../../db/schema.js';
 import { eq, and, gte, lte, isNull, desc, asc, sql } from 'drizzle-orm';
 
 /**
