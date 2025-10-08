@@ -1,38 +1,79 @@
-import express from 'express';
-import * as ctrl from './schedules.controllers.js';
+import { Router } from 'express';
+import { validate } from '../../middleware/validate.js';
+import * as schedulesValidators from './schedules.validators.js';
+import * as schedulesControllers from './schedules.controllers.js';
 
-const router = express.Router();
+const router = Router();
 
-/**
- * Schedules & Blocks Routes
- * --------------------------------
- */
+// Schedule CRUD operations
+router.post('/', 
+    validate(schedulesValidators.createScheduleSchema), 
+    schedulesControllers.saveNewSchedule
+);
 
-// POST /schedules - create new schedule
-router.post('/', ctrl.saveNewSchedule);
+router.get('/', 
+    validate(schedulesValidators.getSchedulesQuerySchema, 'query'), 
+    schedulesControllers.getSchedules
+);
 
-// GET /schedules - get list of schedules (optionally ?since, ?limit, ?cursor)
-router.get('/', ctrl.getSchedules);
+router.get('/:id', 
+    validate(schedulesValidators.scheduleIdParamSchema, 'params'), 
+    schedulesControllers.getScheduleById
+);
 
-// GET /schedules/:id - get full schedule by id
-router.get('/:id', ctrl.getScheduleById);
+router.put('/:id', 
+    validate(schedulesValidators.scheduleIdParamSchema, 'params'),
+    validate(schedulesValidators.updateScheduleSchema), 
+    schedulesControllers.updateSchedule
+);
 
-// PUT /schedules/:id - update schedule (metadata or bulk replace blocks)
-router.put('/:id', ctrl.updateSchedule);
+router.delete('/:id', 
+    validate(schedulesValidators.scheduleIdParamSchema, 'params'), 
+    schedulesControllers.deleteSchedule
+);
 
-// DELETE /schedules/:id - soft delete schedule
-router.delete('/:id', ctrl.deleteSchedule);
+// Block operations
+router.post('/:id/blocks', 
+    validate(schedulesValidators.scheduleIdParamSchema, 'params'),
+    (req, res, next) => {
+        // Check if it's multiple blocks or single block
+        if (req.body.blocks) {
+            return validate(schedulesValidators.createMultipleBlocksSchema)(req, res, next);
+        } else {
+            return validate(schedulesValidators.createBlockSchema)(req, res, next);
+        }
+    },
+    schedulesControllers.addBlocks
+);
 
-// POST /schedules/:id/blocks - add one or more blocks to a schedule
-router.post('/:id/blocks', ctrl.addBlocks);
+router.put('/:id/blocks/:blockId', 
+    validate(schedulesValidators.scheduleAndBlockIdParamSchema, 'params'),
+    validate(schedulesValidators.updateBlockSchema),
+    schedulesControllers.updateBlock
+);
 
-// PUT /schedules/:id/blocks/:blockId - update a specific block
-router.put('/:id/blocks/:blockId', ctrl.updateBlock);
+router.delete('/:id/blocks/:blockId', 
+    validate(schedulesValidators.scheduleAndBlockIdParamSchema, 'params'),
+    schedulesControllers.deleteBlock
+);
 
-// DELETE /schedules/:id/blocks/:blockId - soft delete a specific block
-router.delete('/:id/blocks/:blockId', ctrl.deleteBlock);
+// Bulk operations
+router.post('/:id/apply-ops', 
+    validate(schedulesValidators.scheduleIdParamSchema, 'params'),
+    validate(schedulesValidators.diffOpsSchema),
+    schedulesControllers.applyOps
+);
 
-// POST /schedules/:id/ops - apply diff ops (add/update/delete multiple blocks)
-router.post('/:id/ops', ctrl.applyOps);
+// Helper endpoints
+router.get('/:id/blocks/date-range', 
+    validate(schedulesValidators.scheduleIdParamSchema, 'params'),
+    validate(schedulesValidators.dateRangeQuerySchema, 'query'),
+    schedulesControllers.getBlocksInDateRange
+);
+
+router.patch('/:id/blocks/:blockId/complete', 
+    validate(schedulesValidators.scheduleAndBlockIdParamSchema, 'params'),
+    schedulesControllers.markBlockCompleted
+);
 
 export default router;

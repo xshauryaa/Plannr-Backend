@@ -16,9 +16,21 @@ export const schedules = pgTable("schedules", {
   id: uuid("id").defaultRandom().primaryKey(),
   ownerId: uuid("owner_id").notNull(),
   title: text("title").notNull(),
-  periodStart: date("period_start").notNull(),
-  periodEnd: date("period_end").notNull(),
+  // Support both period-based and day1-based scheduling
+  periodStart: date("period_start"),
+  periodEnd: date("period_end"),
+  // Frontend Schedule model fields
+  day1Date: jsonb("day1_date"), // Store ScheduleDate as {date: 7, month: 10, year: 2025}
+  day1Day: text("day1_day"), // "Monday", "Tuesday", etc.
   isActive: boolean("is_active").notNull().default(false),
+  // Additional fields from frontend Schedule model
+  numDays: integer("num_days").notNull().default(7),
+  minGap: integer("min_gap").notNull().default(15), // minutes
+  workingHoursLimit: integer("working_hours_limit").notNull().default(8),
+  strategy: text("strategy").notNull().default("EarliestFit"), // 'EarliestFit'|'BalancedWork'|'DeadlineOriented'
+  startTime: integer("start_time").notNull().default(900), // Time24 format (e.g., 900 = 9:00 AM)
+  endTime: integer("end_time").notNull().default(1700), // Time24 format (e.g., 1700 = 5:00 PM)
+  metadata: jsonb("metadata"),
   version: integer("version").notNull().default(1),
   deletedAt: timestamp("deleted_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
@@ -32,20 +44,32 @@ export const schedules = pgTable("schedules", {
 export const blocks = pgTable("blocks", {
   id: uuid("id").defaultRandom().primaryKey(),
   scheduleId: uuid("schedule_id").notNull().references(() => schedules.id, { onDelete: "cascade" }),
-  type: text("type").notNull(), // 'task' | 'break' | 'event' (use pgEnum if you want)
-  title: text("title").notNull(),
-  startAt: timestamp("start_at", { withTimezone: true }).notNull(),
-  endAt: timestamp("end_at", { withTimezone: true }).notNull(),
-  category: text("category"),
-  metadata: jsonb("metadata"),
+  type: text("type").notNull(), // 'rigid' | 'flexible' | 'break'
+  title: text("title").notNull(), // Maps to 'name' in frontend
+  // Time24 format for times
+  startAt: integer("start_at").notNull(), // Time24 format (e.g., 930 = 9:30 AM)
+  endAt: integer("end_at").notNull(), // Time24 format (e.g., 1030 = 10:30 AM)
+  // Support both simple date and ScheduleDate object
+  blockDate: date("block_date"), // Simple date for database queries
+  dateObject: jsonb("date_object"), // ScheduleDate as {date: 7, month: 10, year: 2025}
+  category: text("category"), // ActivityType enum
+  // Enhanced metadata for frontend compatibility
+  metadata: jsonb("metadata"), // Stores: activityType, priority, deadline, duration, frontendId
+  // Direct fields for common properties
+  priority: text("priority"), // 'LOW'|'MEDIUM'|'HIGH'
+  deadline: date("deadline"), // Simple deadline date
+  deadlineObject: jsonb("deadline_object"), // ScheduleDate object for deadline
+  duration: integer("duration"), // Duration in minutes
+  frontendId: text("frontend_id"), // Store frontend-generated IDs
   completed: boolean("completed").notNull().default(false),
   version: integer("version").notNull().default(1),
   deletedAt: timestamp("deleted_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
 }, (t) => [
-  index("blocks_schedule_start_idx").on(t.scheduleId, t.startAt),
+  index("blocks_schedule_date_start_idx").on(t.scheduleId, t.blockDate, t.startAt),
   index("blocks_schedule_updated_idx").on(t.scheduleId, t.updatedAt),
+  index("blocks_frontend_id_idx").on(t.frontendId),
 ]);
 
 export const preferences = pgTable("preferences", {
